@@ -18,6 +18,7 @@ const adminRoutes = require('./modules/admin/routes');
 const apiRoutes = require('./modules/api/routes');
 const webhookRoutes = require('./modules/webhook/routes');
 const rbacRoutes = require('./modules/rbac/routes');
+const whatsappTestRoutes = require('./modules/whatsapp-test/routes');
 
 const app = express();
 
@@ -48,7 +49,8 @@ app.use('/api/autoresponders', require('./modules/autoresponders/routes'));  // 
 app.use('/api/rbac', rbacRoutes);  // RBAC management
 app.use('/api/products', require('./modules/products/routes'));  // Campaign Products & Workflows
 app.use('/api/applications', require('./modules/applications/routes'));  // Applications & Workqueue
-app.use('/webhook', webhookRoutes);
+app.use('/webhook', webhookRoutes);  // WhatsApp webhooks
+app.use('/api/whatsapp-test', whatsappTestRoutes);  // Superadmin WhatsApp testing
 
 
 // Health check
