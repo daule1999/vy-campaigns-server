@@ -55,6 +55,9 @@ const WorkflowStep = require('./WorkflowStep')(sequelize);
 const Application = require('./Application')(sequelize);
 const StepExecution = require('./StepExecution')(sequelize);
 
+// Webhook Model
+const WebhookEvent = require('./WebhookEvent');
+
 // Define associations - Existing
 User.hasMany(Template, { foreignKey: 'createdBy', as: 'templates' });
 User.hasMany(Campaign, { foreignKey: 'createdBy', as: 'campaigns' });
@@ -179,5 +182,7 @@ module.exports = {
     WorkflowStep,
     Application,
     StepExecution,
+    // Webhook exports
+    WebhookEvent,
 };
 

@@ -3,6 +3,8 @@ const router = express.Router();
 const { autoresponderRepository, templateRepository } = require('../../db/repositories');
 const { sendInteractiveButtons, sendFreeTextMessage, sendImageMessage } = require('../../services/whatsapp');
 const config = require('../../config');
+const { WebhookEvent } = require('../../db/models/sequelize');
+const { authenticate } = require('../../middleware');
 
 /**
  * Webhook verification (GET)
@@ -74,7 +76,8 @@ router.get('/test', (req, res) => {
         endpoint: {
             verification: 'GET /webhook',
             events: 'POST /webhook',
-            test: 'GET /webhook/test'
+            test: 'GET /webhook/test',
+            recent: 'GET /webhook/recent (requires auth)'
         },
         config: {
             verifyToken: config.webhook.verifyToken ? '✅ Configured' : '❌ Not configured',
@@ -83,6 +86,84 @@ router.get('/test', (req, res) => {
         },
         samplePayload
     });
+});
+
+/**
+ * Poll for recent webhook events (Frontend real-time updates)
+ */
+router.get('/recent', authenticate, async (req, res) => {
+    try {
+        const since = req.query.since ? new Date(parseInt(req.query.since)) : new Date(Date.now() - 60000);
+        const limit = parseInt(req.query.limit) || 50;
+
+        const events = await WebhookEvent.findAll({
+            where: {
+                createdAt: {
+                    [require('sequelize').Op.gt]: since
+                }
+            },
+            order: [['createdAt', 'DESC']],
+            limit: limit
+        });
+
+        // Transform for frontend
+        const formattedEvents = events.map(event => ({
+            id: event.id,
+            eventType: event.eventType,
+            from: event.from,
+            messageType: event.messageType,
+            messageText: event.messageText,
+            templateName: event.templateName,
+            templateStatus: event.templateStatus,
+            timestamp: event.createdAt,
+            preview: generateEventPreview(event)
+        }));
+
+        res.json({
+            success: true,
+            count: formattedEvents.length,
+            events: formattedEvents
+        });
+    } catch (error) {
+        console.error('❌ Error fetching webhook events:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch webhook events'
+        });
+    }
+});
+
+/**
+ * Get webhook event statistics
+ */
+router.get('/stats', authenticate, async (req, res) => {
+    try {
+        const { Op } = require('sequelize');
+        const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const [totalEvents, messageEvents, templateEvents, last24HoursCount] = await Promise.all([
+            WebhookEvent.count(),
+            WebhookEvent.count({ where: { eventType: 'messages' } }),
+            WebhookEvent.count({ where: { eventType: 'message_template_status_update' } }),
+            WebhookEvent.count({ where: { createdAt: { [Op.gt]: last24Hours } } })
+        ]);
+
+        res.json({
+            success: true,
+            stats: {
+                total: totalEvents,
+                messages: messageEvents,
+                templateUpdates: templateEvents,
+                last24Hours: last24HoursCount
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error fetching webhook stats:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch webhook statistics'
+        });
+    }
 });
 
 /**
@@ -95,14 +176,20 @@ router.post('/', async (req, res) => {
         console.log('📨 Webhook POST received');
         console.log('📦 Payload:', JSON.stringify(body, null, 2));
 
-        // Check availability of the object
-        if (body.object) { // usually 'whatsapp_business_account'
+        // Respond 200 OK immediately (required by WhatsApp)
+        res.sendStatus(200);
+
+        // Process webhook asynchronously
+        if (body.object === 'whatsapp_business_account') {
             if (body.entry && body.entry[0].changes && body.entry[0].changes[0].value) {
                 const change = body.entry[0].changes[0];
                 const value = change.value;
                 const field = change.field;
 
                 console.log(`🔔 Webhook Event: ${field}`);
+
+                // Log event to database
+                await logWebhookEvent(field, value, body);
 
                 // 1. Handle Messages
                 if (field === 'messages' && value.messages && value.messages[0]) {
@@ -153,17 +240,60 @@ router.post('/', async (req, res) => {
                     console.log('ℹ️ Other webhook event:', field);
                 }
             }
-
-            res.sendStatus(200);
         } else {
             console.log('⚠️ Invalid webhook payload: no object field');
-            res.sendStatus(404);
         }
     } catch (error) {
         console.error('❌ Webhook error:', error);
-        res.sendStatus(500);
+        // Note: Already sent 200 OK, can't send error response
     }
 });
+
+/**
+ * Log webhook event to database
+ */
+async function logWebhookEvent(eventType, value, fullPayload) {
+    try {
+        const eventData = {
+            eventType: eventType,
+            payload: fullPayload
+        };
+
+        // Extract relevant fields based on event type
+        if (eventType === 'messages' && value.messages && value.messages[0]) {
+            const message = value.messages[0];
+            eventData.from = message.from;
+            eventData.messageType = message.type;
+            eventData.messageText = message.text?.body || null;
+        } else if (eventType === 'message_template_status_update') {
+            eventData.templateName = value.message_template_name;
+            eventData.templateStatus = value.event;
+        }
+
+        await WebhookEvent.create(eventData);
+        console.log('✅ Webhook event logged to database');
+    } catch (error) {
+        console.error('❌ Error logging webhook event:', error);
+        // Don't throw - logging failure shouldn't break webhook processing
+    }
+}
+
+/**
+ * Generate human-readable preview for event
+ */
+function generateEventPreview(event) {
+    switch (event.eventType) {
+        case 'messages':
+            if (event.messageType === 'text') {
+                return `Message from ${event.from}: "${event.messageText}"`;
+            }
+            return `${event.messageType} message from ${event.from}`;
+        case 'message_template_status_update':
+            return `Template "${event.templateName}" is now ${event.templateStatus}`;
+        default:
+            return `${event.eventType} event`;
+    }
+}
 
 /**
  * Handle Template Status Updates (Approved, Rejected, etc.)
@@ -298,4 +428,5 @@ async function handleLegacyButtonResponse(from, button) {
 }
 
 module.exports = router;
+
 
