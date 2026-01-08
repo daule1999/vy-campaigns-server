@@ -1,0 +1,64 @@
+Question: "If we start using WhatsApp Business API, will WhatsApp Business App also work?"
+
+Answer:
+
+✅ YES, both can work together (Hybrid/Coexistence mode)
+This is Meta's recommended approach for most businesses
+Same number, messages sync automatically
+You get flexibility of phone app + power of API
+Only restriction: One must be disabled if you want >20 msg/sec throughput
+
+How Hybrid Mode Works in Practice
+
+Scenario 1: Agent on the Go
+Agent's phone (WhatsApp Business App)
+    ↕️ (syncs automatically)
+BSP Platform (Aisensy/Interakt dashboard on computer)
+Agent can reply from phone OR computer - both work!
+
+Scenario 2: Automation + Manual
+9 AM: API sends automated "Good morning" broadcast to 1000 customers
+    ↓
+Customer replies: "I need help in order #123"
+    ↓
+Agent sees message on WhatsApp Business App
+    ↓
+Agent replies personally from phone
+    ↓
+Conversation continues smoothly
+
+
+Limitations of Hybrid Mode
+Throughput: Limited to 20 messages/second (vs 500/sec on API-only)
+Features: Some API features don't work (groups, disappearing messages)
+App Required: WhatsApp Business App must stay installed
+Region: Not available in EU, UK, Australia, Japan (as of 2025)
+
+❌ API-ONLY MODE - Only One Works
+If you choose API-only (traditional approach):
+
+✅ Higher throughput (up to 500 messages/second)
+❌ Cannot use WhatsApp Business App anymore
+❌ Must delete your WhatsApp Business App account first
+❌ NO chat history transfers
+
+Feature	                Hybrid Mode (Both)	API-Only
+WhatsApp Business App	✅ Works	            ❌ Must delete
+WhatsApp Business API	✅ Works	            ✅ Works
+Chat History Sync	    ✅ Up to 6 months	❌ None
+Message Throughput	    20 msg/sec	         500 msg/sec
+Use Phone for Chats	    ✅ Yes	            ❌ No
+Automation	            ✅ Yes	            ✅ Yes
+
+
+Question: "Will it sync our entire data (more than one year) before we start the API?"
+
+Answer:
+
+NO - Only last 6 months syncs
+❌ Data older than 6 months will NOT sync
+✅ You must manually export important old chats
+✅ Old data stays accessible in WhatsApp Business App
+✅ Going forward, everything syncs automatically
+
+
