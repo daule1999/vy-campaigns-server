@@ -32,6 +32,10 @@ module.exports = {
         apiUrl: `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION || 'v18.0'}`,
     },
 
+    webhook: {
+        verifyToken: process.env.WEBHOOK_VERIFY_TOKEN || 'your-webhook-verify-token-here',
+    },
+
     messaging: {
         delayMs: parseInt(process.env.MESSAGE_DELAY_MS) || 3000,
     },
@@ -41,3 +45,4 @@ module.exports = {
         contactsApiKey: process.env.EXTERNAL_CONTACTS_API_KEY,
     },
 };
+

@@ -12,20 +12,77 @@ router.get('/', (req, res) => {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
+    console.log('📋 Webhook Verification Request:');
+    console.log('  Mode:', mode);
+    console.log('  Token (received):', token);
+    console.log('  Token (expected):', config.webhook.verifyToken);
+    console.log('  Challenge:', challenge);
+
     // Check if a token and mode is in the query string of the request
     if (mode && token) {
         // Check the mode and token sent is correct
         if (mode === 'subscribe' && token === config.webhook.verifyToken) {
             // Respond with the challenge token from the request
-            console.log('✓ Webhook verified');
+            console.log('✅ Webhook verified successfully!');
             res.status(200).send(challenge);
         } else {
             // Responds with '403 Forbidden' if verify tokens do not match
+            console.log('❌ Webhook verification failed: Token mismatch');
             res.sendStatus(403);
         }
     } else {
+        console.log('❌ Webhook verification failed: Missing mode or token');
         res.sendStatus(400);
     }
+});
+
+/**
+ * TEST Webhook endpoint - Returns sample webhook payload
+ */
+router.get('/test', (req, res) => {
+    const samplePayload = {
+        object: 'whatsapp_business_account',
+        entry: [{
+            id: 'WHATSAPP_BUSINESS_ACCOUNT_ID',
+            changes: [{
+                value: {
+                    messaging_product: 'whatsapp',
+                    metadata: {
+                        display_phone_number: '16505551111',
+                        phone_number_id: '123456789'
+                    },
+                    contacts: [{
+                        profile: { name: 'Test User' },
+                        wa_id: '16505551234'
+                    }],
+                    messages: [{
+                        from: '16505551234',
+                        id: 'wamid.TEST_MESSAGE_ID',
+                        timestamp: Math.floor(Date.now() / 1000).toString(),
+                        type: 'text',
+                        text: { body: 'Test message' }
+                    }]
+                },
+                field: 'messages'
+            }]
+        }]
+    };
+
+    res.json({
+        status: 'success',
+        message: 'Webhook test endpoint',
+        endpoint: {
+            verification: 'GET /webhook',
+            events: 'POST /webhook',
+            test: 'GET /webhook/test'
+        },
+        config: {
+            verifyToken: config.webhook.verifyToken ? '✅ Configured' : '❌ Not configured',
+            whatsappToken: config.whatsapp.token ? '✅ Configured' : '❌ Not configured',
+            phoneNumberId: config.whatsapp.phoneNumberId || 'Not configured'
+        },
+        samplePayload
+    });
 });
 
 /**
@@ -35,12 +92,17 @@ router.post('/', async (req, res) => {
     try {
         const body = req.body;
 
+        console.log('📨 Webhook POST received');
+        console.log('📦 Payload:', JSON.stringify(body, null, 2));
+
         // Check availability of the object
         if (body.object) { // usually 'whatsapp_business_account'
             if (body.entry && body.entry[0].changes && body.entry[0].changes[0].value) {
                 const change = body.entry[0].changes[0];
                 const value = change.value;
                 const field = change.field;
+
+                console.log(`🔔 Webhook Event: ${field}`);
 
                 // 1. Handle Messages
                 if (field === 'messages' && value.messages && value.messages[0]) {
@@ -65,7 +127,7 @@ router.post('/', async (req, res) => {
                             // Optional: Auto-reply for media
                             break;
                         case 'document':
-                            console.log('Dl Received document:', message.document.filename);
+                            console.log('📄 Received document:', message.document.filename);
                             break;
                         case 'location':
                             console.log('📍 Received location:', message.location.name);
@@ -79,14 +141,26 @@ router.post('/', async (req, res) => {
                 else if (field === 'message_template_status_update') {
                     await handleTemplateStatusUpdate(value);
                 }
+
+                // 3. Handle Message Status Updates
+                else if (field === 'messages' && value.statuses && value.statuses[0]) {
+                    const status = value.statuses[0];
+                    console.log(`📬 Message Status Update: ${status.id} -> ${status.status}`);
+                }
+
+                // 4. Log other webhook types
+                else {
+                    console.log('ℹ️ Other webhook event:', field);
+                }
             }
 
             res.sendStatus(200);
         } else {
+            console.log('⚠️ Invalid webhook payload: no object field');
             res.sendStatus(404);
         }
     } catch (error) {
-        console.error('Webhook error:', error);
+        console.error('❌ Webhook error:', error);
         res.sendStatus(500);
     }
 });
@@ -98,6 +172,9 @@ async function handleTemplateStatusUpdate(value) {
     const { message_template_name, message_template_language, event, reason } = value;
 
     console.log(`📝 Template Update: ${message_template_name} (${message_template_language}) -> ${event}`);
+    if (reason) {
+        console.log(`   Reason: ${reason}`);
+    }
 
     try {
         // Find template by name and language
@@ -116,12 +193,12 @@ async function handleTemplateStatusUpdate(value) {
             await templateRepository.updateById(template.id, {
                 status: newStatus
             });
-            console.log(`✓ Updated local template ${template.id} status to ${newStatus}`);
+            console.log(`✅ Updated local template ${template.id} status to ${newStatus}`);
         } else {
             console.warn(`⚠️ Template not found locally: ${message_template_name}`);
         }
     } catch (err) {
-        console.error('Error updating template status:', err);
+        console.error('❌ Error updating template status:', err);
     }
 }
 
@@ -136,7 +213,7 @@ async function handleIncomingMessage(from, text) {
         const autoresponder = await autoresponderRepository.findByKeyword(text);
 
         if (autoresponder) {
-            console.log(`✓ Autoresponder matched: ${autoresponder.name}`);
+            console.log(`✅ Autoresponder matched: ${autoresponder.name}`);
 
             // If it has menu options, send interactive button message
             if (autoresponder.menuOptions && autoresponder.menuOptions.length > 0) {
@@ -159,7 +236,7 @@ async function handleIncomingMessage(from, text) {
             console.log('❌ No autoresponder matched');
         }
     } catch (error) {
-        console.error('Error handling incoming message:', error);
+        console.error('❌ Error handling incoming message:', error);
     }
 }
 
@@ -205,7 +282,7 @@ async function handleButtonResponse(from, interactive) {
             console.log('⚠️ No response configured for this button ID');
         }
     } catch (error) {
-        console.error('Error handling button response:', error);
+        console.error('❌ Error handling button response:', error);
     }
 }
 
@@ -215,9 +292,10 @@ async function handleButtonResponse(from, interactive) {
 async function handleLegacyButtonResponse(from, button) {
     // Similar logic to interactive, just different payload structure
     // Treating as regular text match for now for simplicity, or re-route to handleButtonResponse if IDs match
-    console.log(`Legacy Button: ${button.payload}`);
+    console.log(`🔘 Legacy Button: ${button.payload}`);
     // You could route this to handleIncomingMessage(from, button.text) to trigger keyword logic again
     await handleIncomingMessage(from, button.text);
 }
 
 module.exports = router;
+
