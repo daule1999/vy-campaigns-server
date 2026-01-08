@@ -13,6 +13,12 @@ module.exports = (sequelize) => {
             field: 'event_type',
             comment: 'Type of webhook event: messages, template_status, etc.'
         },
+        webhookType: {
+            type: DataTypes.STRING(50),
+            allowNull: true,
+            field: 'webhook_type',
+            comment: 'Webhook category: message, status, alert, etc.'
+        },
         from: {
             type: DataTypes.STRING(20),
             allowNull: true,
@@ -30,6 +36,18 @@ module.exports = (sequelize) => {
             field: 'message_text',
             comment: 'Text content of message'
         },
+        messageId: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            field: 'message_id',
+            comment: 'WhatsApp message ID (WAMID)'
+        },
+        statusType: {
+            type: DataTypes.STRING(20),
+            allowNull: true,
+            field: 'status_type',
+            comment: 'sent, delivered, read, failed for status events'
+        },
         templateName: {
             type: DataTypes.STRING(100),
             allowNull: true,
@@ -41,6 +59,18 @@ module.exports = (sequelize) => {
             allowNull: true,
             field: 'template_status',
             comment: 'APPROVED, REJECTED, etc.'
+        },
+        errorCode: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            field: 'error_code',
+            comment: 'Error code if event contains error'
+        },
+        errorMessage: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: 'error_message',
+            comment: 'Error message if event contains error'
         },
         payload: {
             type: DataTypes.JSON,
@@ -69,6 +99,15 @@ module.exports = (sequelize) => {
                 fields: ['event_type']
             },
             {
+                fields: ['webhook_type']
+            },
+            {
+                fields: ['message_id']
+            },
+            {
+                fields: ['status_type']
+            },
+            {
                 fields: ['processed']
             }
         ]
@@ -76,4 +115,5 @@ module.exports = (sequelize) => {
 
     return WebhookEvent;
 };
+
 

@@ -5,6 +5,9 @@ const { sendInteractiveButtons, sendFreeTextMessage, sendImageMessage } = requir
 const config = require('../../config');
 const { WebhookEvent } = require('../../db/models/sequelize');
 const { authenticate } = require('../../middleware');
+const { validateWebhookPayload } = require('../../validators/webhookSchemas');
+const { webhookValidationError, createGraphAPIError } = require('../../utils/graphAPIError');
+
 
 /**
  * Webhook verification (GET)
@@ -176,6 +179,14 @@ router.post('/', async (req, res) => {
         console.log('📨 Webhook POST received');
         console.log('📦 Payload:', JSON.stringify(body, null, 2));
 
+        // Validate webhook payload
+        const validation = validateWebhookPayload(body);
+        if (!validation.valid) {
+            console.error('❌ Webhook validation failed:', validation.errors);
+            const error = webhookValidationError(validation.errors);
+            return res.status(400).json(error);
+        }
+
         // Respond 200 OK immediately (required by WhatsApp)
         res.sendStatus(200);
 
@@ -191,53 +202,30 @@ router.post('/', async (req, res) => {
                 // Log event to database
                 await logWebhookEvent(field, value, body);
 
-                // 1. Handle Messages
-                if (field === 'messages' && value.messages && value.messages[0]) {
-                    const message = value.messages[0];
-                    const from = message.from; // Sender's phone number
+                // Handle different event types
+                switch (field) {
+                    case 'messages':
+                        await handleMessagesEvent(value);
+                        break;
 
-                    // Log incoming message type
-                    console.log(`📨 Incoming ${message.type} from ${from}`);
+                    case 'message_template_status_update':
+                        await handleTemplateStatusUpdate(value);
+                        break;
 
-                    switch (message.type) {
-                        case 'text':
-                            await handleIncomingMessage(from, message.text.body);
-                            break;
-                        case 'interactive':
-                            await handleButtonResponse(from, message.interactive);
-                            break;
-                        case 'button': // Quick Reply Button (legacy/alternative)
-                            await handleLegacyButtonResponse(from, message.button);
-                            break;
-                        case 'image':
-                            console.log('📸 Received image:', message.image.id);
-                            // Optional: Auto-reply for media
-                            break;
-                        case 'document':
-                            console.log('📄 Received document:', message.document.filename);
-                            break;
-                        case 'location':
-                            console.log('📍 Received location:', message.location.name);
-                            break;
-                        default:
-                            console.log('❓ Received unknown message type:', message.type);
-                    }
-                }
+                    case 'account_review_update':
+                        await handleAccountReviewUpdate(value);
+                        break;
 
-                // 2. Handle Template Status Updates
-                else if (field === 'message_template_status_update') {
-                    await handleTemplateStatusUpdate(value);
-                }
+                    case 'phone_number_quality_update':
+                        await handlePhoneQualityUpdate(value);
+                        break;
 
-                // 3. Handle Message Status Updates
-                else if (field === 'messages' && value.statuses && value.statuses[0]) {
-                    const status = value.statuses[0];
-                    console.log(`📬 Message Status Update: ${status.id} -> ${status.status}`);
-                }
+                    case 'account_alerts':
+                        await handleAccountAlerts(value);
+                        break;
 
-                // 4. Log other webhook types
-                else {
-                    console.log('ℹ️ Other webhook event:', field);
+                    default:
+                        console.log(`ℹ️ Unhandled webhook event type: ${field}`);
                 }
             }
         } else {
@@ -250,24 +238,147 @@ router.post('/', async (req, res) => {
 });
 
 /**
+ * Handle messages event - includes both incoming messages and status updates
+ */
+async function handleMessagesEvent(value) {
+    // Handle incoming messages
+    if (value.messages && value.messages[0]) {
+        const message = value.messages[0];
+        const from = message.from;
+
+        console.log(`📨 Incoming ${message.type} from ${from}`);
+
+        switch (message.type) {
+            case 'text':
+                await handleIncomingMessage(from, message.text.body);
+                break;
+            case 'interactive':
+                await handleButtonResponse(from, message.interactive);
+                break;
+            case 'button':
+                await handleLegacyButtonResponse(from, message.button);
+                break;
+            case 'image':
+                console.log('📸 Received image:', message.image.id);
+                break;
+            case 'video':
+                console.log('🎥 Received video:', message.video.id);
+                break;
+            case 'audio':
+                console.log('🎵 Received audio:', message.audio.id);
+                break;
+            case 'document':
+                console.log('📄 Received document:', message.document.filename);
+                break;
+            case 'location':
+                console.log('📍 Received location:', message.location);
+                break;
+            case 'contacts':
+                console.log('👤 Received contacts:', message.contacts);
+                break;
+            case 'sticker':
+                console.log('😊 Received sticker:', message.sticker.id);
+                break;
+            case 'reaction':
+                console.log('❤️ Received reaction:', message.reaction.emoji, 'on message', message.reaction.message_id);
+                break;
+            default:
+                console.log('❓ Received unknown message type:', message.type);
+        }
+    }
+
+    // Handle message status updates
+    if (value.statuses && value.statuses[0]) {
+        const status = value.statuses[0];
+        await handleMessageStatusUpdate(status);
+    }
+}
+
+/**
+ * Handle message status updates (sent, delivered, read, failed)
+ */
+async function handleMessageStatusUpdate(status) {
+    const { id, status: statusType, timestamp, recipient_id, errors } = status;
+
+    console.log(`📬 Message Status: ${id} -> ${statusType}${recipient_id ? ` (${recipient_id})` : ''}`);
+
+    if (errors && errors.length > 0) {
+        const error = errors[0];
+        console.error(`❌ Message delivery error: ${error.code} - ${error.title}`);
+    }
+
+    // TODO: Update message tracking in database
+    // This would be used for message delivery analytics
+}
+
+/**
+ * Handle account review update
+ */
+async function handleAccountReviewUpdate(value) {
+    const { current_status, previous_status, affected_features } = value;
+    console.log(`🔍 Account Review Update: ${previous_status} -> ${current_status}`);
+
+    if (affected_features) {
+        console.log(`   Affected features:`, affected_features);
+    }
+}
+
+/**
+ * Handle phone number quality update
+ */
+async function handlePhoneQualityUpdate(value) {
+    const { phone_number, quality_rating, previous_quality_rating } = value;
+    console.log(`📊 Phone Quality Update: ${phone_number}`);
+    console.log(`   Rating: ${previous_quality_rating} -> ${quality_rating}`);
+}
+
+/**
+ * Handle account alerts
+ */
+async function handleAccountAlerts(value) {
+    const { alert_type, alert_severity, message } = value;
+    console.log(`🚨 Account Alert (${alert_severity}): ${alert_type}`);
+    console.log(`   Message: ${message}`);
+}
+
+
+/**
  * Log webhook event to database
  */
 async function logWebhookEvent(eventType, value, fullPayload) {
     try {
         const eventData = {
             eventType: eventType,
-            payload: fullPayload
+            payload: fullPayload,
+            webhookType: determineWebhookType(eventType, value)
         };
 
         // Extract relevant fields based on event type
-        if (eventType === 'messages' && value.messages && value.messages[0]) {
-            const message = value.messages[0];
-            eventData.from = message.from;
-            eventData.messageType = message.type;
-            eventData.messageText = message.text?.body || null;
+        if (eventType === 'messages') {
+            if (value.messages && value.messages[0]) {
+                const message = value.messages[0];
+                eventData.from = message.from;
+                eventData.messageType = message.type;
+                eventData.messageId = message.id;
+                eventData.messageText = message.text?.body || null;
+            } else if (value.statuses && value.statuses[0]) {
+                const status = value.statuses[0];
+                eventData.messageId = status.id;
+                eventData.statusType = status.status;
+                eventData.from = status.recipient_id;
+
+                // Capture error information
+                if (status.errors && status.errors[0]) {
+                    eventData.errorCode = status.errors[0].code;
+                    eventData.errorMessage = status.errors[0].title || status.errors[0].message;
+                }
+            }
         } else if (eventType === 'message_template_status_update') {
             eventData.templateName = value.message_template_name;
             eventData.templateStatus = value.event;
+            if (value.reason) {
+                eventData.errorMessage = value.reason;
+            }
         }
 
         await WebhookEvent.create(eventData);
@@ -277,6 +388,18 @@ async function logWebhookEvent(eventType, value, fullPayload) {
         // Don't throw - logging failure shouldn't break webhook processing
     }
 }
+
+/**
+ * Determine webhook type category
+ */
+function determineWebhookType(eventType, value) {
+    if (eventType === 'messages') {
+        if (value.messages) return 'message_received';
+        if (value.statuses) return 'message_status';
+    }
+    return eventType;
+}
+
 
 /**
  * Generate human-readable preview for event

@@ -12,6 +12,8 @@
         "test:api:only": "node tests/index.js --only="
     },
     "dependencies": {
+        "ajv": "^8.17.1",
+        "ajv-formats": "^3.0.1",
         "axios": "^1.6.0",
         "bcryptjs": "^2.4.3",
         "bullmq": "^5.66.4",
@@ -22,9 +24,11 @@
         "express-validator": "^7.0.1",
         "ioredis": "^5.8.2",
         "jsonwebtoken": "^9.0.2",
+        "libphonenumber-js": "^1.12.33",
         "mongoose": "^8.0.0",
         "multer": "^2.0.2",
         "mysql2": "^3.9.0",
+        "qrcode": "^1.5.4",
         "sequelize": "^6.37.0",
         "uuid": "^9.0.1",
         "xlsx": "^0.18.5"
