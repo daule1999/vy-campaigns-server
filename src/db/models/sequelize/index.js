@@ -56,7 +56,8 @@ const Application = require('./Application')(sequelize);
 const StepExecution = require('./StepExecution')(sequelize);
 
 // Webhook Model
-const WebhookEvent = require('./WebhookEvent');
+const WebhookEvent = require('./WebhookEvent')(sequelize);
+
 
 // Define associations - Existing
 User.hasMany(Template, { foreignKey: 'createdBy', as: 'templates' });
