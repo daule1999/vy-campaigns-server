@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const config = require('../../config');
 const { authenticate, authorize } = require('../../middleware');
 
 /**
@@ -32,7 +33,7 @@ router.post('/send-message', authenticate, authorize(['superadmin']), async (req
             });
         }
 
-        const apiUrl = `https://graph.facebook.com/v23.0/${phoneNumberId}/messages`;
+        const apiUrl = `${config.whatsapp.apiUrl}/${phoneNumberId}/messages`;
 
         let payload;
 
@@ -135,7 +136,7 @@ router.post('/subscribe-webhook', authenticate, authorize(['superadmin']), async
             'account_review_update'
         ];
 
-        const apiUrl = `https://graph.facebook.com/v23.0/${wabaId}/subscribed_apps`;
+        const apiUrl = `${config.whatsapp.apiUrl}/${wabaId}/subscribed_apps`;
 
         console.log('📤 Testing webhook subscription...');
         console.log('Endpoint:', apiUrl);
@@ -341,7 +342,7 @@ router.get('/webhook-subscriptions', authenticate, authorize(['superadmin']), as
             });
         }
 
-        const apiUrl = `https://graph.facebook.com/v23.0/${wabaId}/subscribed_apps`;
+        const apiUrl = `${config.whatsapp.apiUrl}/${wabaId}/subscribed_apps`;
 
         const response = await axios.get(apiUrl, {
             params: { access_token: accessToken }

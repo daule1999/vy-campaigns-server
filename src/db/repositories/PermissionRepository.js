@@ -31,6 +31,62 @@ const DEFAULT_PERMISSIONS = [
     { name: 'applications:import', feature: 'applications', description: 'Import applications from CSV' },
     { name: 'workqueue:access', feature: 'workqueue', description: 'Access agent workqueue' },
     { name: 'workqueue:claim', feature: 'workqueue', description: 'Claim/release applications' },
+
+    // ===== NEW INTERAKT-LIKE PERMISSIONS =====
+
+    // Teams (new naming convention)
+    { name: 'teams:read', feature: 'teams', description: 'View teams' },
+    { name: 'teams:write', feature: 'teams', description: 'Create/edit teams' },
+    { name: 'teams:delete', feature: 'teams', description: 'Delete teams' },
+    // Teams (legacy naming for existing routes)
+    { name: 'team.view', feature: 'teams', description: 'View teams (legacy)' },
+    { name: 'team.create', feature: 'teams', description: 'Create teams (legacy)' },
+    { name: 'team.update', feature: 'teams', description: 'Update teams (legacy)' },
+    { name: 'team.delete', feature: 'teams', description: 'Delete teams (legacy)' },
+
+    // Agents
+    { name: 'agents:read', feature: 'agents', description: 'View agents' },
+    { name: 'agents:write', feature: 'agents', description: 'Edit agents' },
+    { name: 'agents:invite', feature: 'agents', description: 'Invite new agents' },
+    { name: 'agents:delete', feature: 'agents', description: 'Remove agents' },
+
+    // Workflows (Automation)
+    { name: 'workflows:read', feature: 'workflows', description: 'View workflows' },
+    { name: 'workflows:write', feature: 'workflows', description: 'Create/edit workflows' },
+    { name: 'workflows:delete', feature: 'workflows', description: 'Delete workflows' },
+    { name: 'workflows:execute', feature: 'workflows', description: 'Execute workflows' },
+
+    // Quick Replies
+    { name: 'quick_replies:read', feature: 'quick_replies', description: 'View quick replies' },
+    { name: 'quick_replies:write', feature: 'quick_replies', description: 'Create/edit quick replies' },
+
+    // Inbox Settings
+    { name: 'inbox_settings:read', feature: 'inbox_settings', description: 'View inbox settings' },
+    { name: 'inbox_settings:write', feature: 'inbox_settings', description: 'Edit inbox settings' },
+
+    // Tags (new naming)
+    { name: 'tags:read', feature: 'tags', description: 'View tags' },
+    { name: 'tags:write', feature: 'tags', description: 'Create/edit tags' },
+    { name: 'tags:delete', feature: 'tags', description: 'Delete tags' },
+    // Tags (legacy naming for existing routes)
+    { name: 'settings.manage_tags', feature: 'tags', description: 'Manage tags (legacy)' },
+    { name: 'contact.manage_tags', feature: 'tags', description: 'Manage contact tags (legacy)' },
+
+    // Contact Fields
+    { name: 'contact_fields:read', feature: 'contact_fields', description: 'View custom fields' },
+    { name: 'contact_fields:write', feature: 'contact_fields', description: 'Create/edit custom fields' },
+
+    // Events
+    { name: 'events:read', feature: 'events', description: 'View events' },
+    { name: 'events:write', feature: 'events', description: 'Create/edit custom events' },
+
+    // Analytics
+    { name: 'analytics:read', feature: 'analytics', description: 'View analytics' },
+    { name: 'analytics:export', feature: 'analytics', description: 'Export analytics data' },
+
+    // Roles (Admin only)
+    { name: 'roles:read', feature: 'roles', description: 'View roles' },
+    { name: 'roles:write', feature: 'roles', description: 'Create/edit roles' },
 ];
 
 class PermissionRepository {

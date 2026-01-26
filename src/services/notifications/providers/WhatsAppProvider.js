@@ -11,8 +11,12 @@ class WhatsAppProvider extends BaseNotificationProvider {
         this.type = 'whatsapp';
         this.token = config.whatsapp?.token;
         this.phoneNumberId = config.whatsapp?.phoneNumberId;
-        this.apiUrl = config.whatsapp?.apiUrl || 'https://graph.facebook.com/v17.0';
+        this.apiUrl = config.whatsapp?.apiUrl;
         this.businessAccountId = config.whatsapp?.businessAccountId;
+        this.useMock = config.whatsapp?.useMock || false;
+
+        console.log(`WhatsApp Provider initialized: ${this.useMock ? 'MOCK' : 'PRODUCTION'} mode`);
+        console.log(`API URL: ${this.apiUrl}`);
     }
 
     isConfigured() {

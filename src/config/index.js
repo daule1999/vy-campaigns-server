@@ -24,13 +24,25 @@ module.exports = {
         },
     },
 
+
     whatsapp: {
-        token: process.env.WHATSAPP_TOKEN,
-        phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
-        businessAccountId: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID,
-        apiVersion: process.env.WHATSAPP_API_VERSION || 'v18.0',
-        apiUrl: `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION || 'v18.0'}`,
+        useMock: process.env.USE_MOCK_WHATSAPP === 'true',
+        token: process.env.USE_MOCK_WHATSAPP === 'true'
+            ? (process.env.MOCK_WHATSAPP_TOKEN || 'mock_test_token')
+            : process.env.WHATSAPP_TOKEN,
+        phoneNumberId: process.env.USE_MOCK_WHATSAPP === 'true'
+            ? (process.env.MOCK_WHATSAPP_PHONE_NUMBER_ID || '123456789')
+            : process.env.WHATSAPP_PHONE_NUMBER_ID,
+        businessAccountId: process.env.USE_MOCK_WHATSAPP === 'true'
+            ? (process.env.MOCK_WHATSAPP_BUSINESS_ACCOUNT_ID || '123456789')
+            : process.env.WHATSAPP_BUSINESS_ACCOUNT_ID,
+        apiVersion: process.env.WHATSAPP_API_VERSION || 'v20.0',
+        apiUrl: process.env.USE_MOCK_WHATSAPP === 'true'
+            ? `${process.env.MOCK_WHATSAPP_API_URL || 'http://localhost:3001'}/${process.env.WHATSAPP_API_VERSION || 'v20.0'}`
+            : `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION || 'v20.0'}`,
     },
+
+
 
     webhook: {
         verifyToken: process.env.WEBHOOK_VERIFY_TOKEN || 'your-webhook-verify-token-here',

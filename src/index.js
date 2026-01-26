@@ -20,6 +20,18 @@ const webhookRoutes = require('./modules/webhook/routes');
 const rbacRoutes = require('./modules/rbac/routes');
 const whatsappTestRoutes = require('./modules/whatsapp-test/routes');
 
+const rolesRoutes = require('./modules/roles/routes');
+const teamsRoutes = require('./modules/teams/routes');
+const permissionsRoutes = require('./modules/permissions/routes');
+const agentsRoutes = require('./modules/agents/routes');
+const workflowsRoutes = require('./modules/workflows/routes');
+const quickRepliesRoutes = require('./modules/quick-replies/routes');
+const inboxSettingsRoutes = require('./modules/inbox-settings/routes');
+const contactFieldsRoutes = require('./modules/contact-fields/routes');
+const tagsRoutes = require('./modules/tags/routes');
+const eventsRoutes = require('./modules/events/routes');
+const analyticsRoutes = require('./modules/analytics/routes');
+
 const app = express();
 
 // Import sanitize middleware
@@ -29,7 +41,16 @@ const { sanitizeInput } = require('./middleware');
 app.use(cors({
     origin: process.env.NODE_ENV === 'production'
         ? process.env.FRONTEND_URL
-        : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
+        : [
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'http://localhost:5174',
+            'http://localhost:5175',
+            'http://localhost:5176',
+            'http://localhost:5177',
+            'http://localhost:5178',
+            'http://localhost:5179'
+        ],
     credentials: true
 }));
 app.use(express.json());
@@ -51,6 +72,19 @@ app.use('/api/products', require('./modules/products/routes'));  // Campaign Pro
 app.use('/api/applications', require('./modules/applications/routes'));  // Applications & Workqueue
 app.use('/webhook', webhookRoutes);  // WhatsApp webhooks
 app.use('/api/whatsapp-test', whatsappTestRoutes);  // Superadmin WhatsApp testing
+
+// New Interakt-style RBAC routes
+app.use('/api/roles', rolesRoutes);  // Role management
+app.use('/api/teams', teamsRoutes);  // Team management
+app.use('/api/permissions', permissionsRoutes);  // Permission listing
+app.use('/api/agents', agentsRoutes);  // Agent management
+app.use('/api/workflows', workflowsRoutes);  // Workflow automation
+app.use('/api/quick-replies', quickRepliesRoutes);  // Quick reply templates
+app.use('/api/inbox-settings', inboxSettingsRoutes);  // Inbox automation settings
+app.use('/api/contact-fields', contactFieldsRoutes);  // Custom contact fields
+app.use('/api/tags', tagsRoutes);  // Contact tags
+app.use('/api/events', eventsRoutes);  // Events tracking
+app.use('/api/analytics', analyticsRoutes);  // Analytics
 
 
 // Health check

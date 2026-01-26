@@ -58,6 +58,34 @@ const StepExecution = require('./StepExecution')(sequelize);
 // Webhook Model
 const WebhookEvent = require('./WebhookEvent')(sequelize);
 
+// New RBAC Models (Interakt-style)
+const Role = require('./Role')(sequelize);
+const RolePermission = require('./RolePermission')(sequelize);
+const UserRole = require('./UserRole')(sequelize);
+const Team = require('./Team')(sequelize);
+const TeamMember = require('./TeamMember')(sequelize);
+
+// Events Tracking Models
+const Event = require('./Event')(sequelize);
+const EventDefinition = require('./EventDefinition')(sequelize);
+
+// Enhanced Contact Models
+const Tag = require('./Tag')(sequelize);
+const ContactTag = require('./ContactTag')(sequelize);
+const ContactField = require('./ContactField')(sequelize);
+const ContactFieldValue = require('./ContactFieldValue')(sequelize);
+
+// Automation Models
+const QuickReply = require('./QuickReply')(sequelize);
+const InboxSetting = require('./InboxSetting')(sequelize);
+
+// Advanced Workflow Models
+const Workflow = require('./Workflow')(sequelize);
+const WorkflowNode = require('./WorkflowNode')(sequelize);
+const WorkflowEdge = require('./WorkflowEdge')(sequelize);
+const WorkflowExecution = require('./WorkflowExecution')(sequelize);
+const WorkflowExecutionLog = require('./WorkflowExecutionLog')(sequelize);
+
 
 // Define associations - Existing
 User.hasMany(Template, { foreignKey: 'createdBy', as: 'templates' });
@@ -161,8 +189,95 @@ StepExecution.belongsTo(WorkflowStep, { foreignKey: 'stepId', as: 'step' });
 // StepExecution -> User (assigned agent)
 StepExecution.belongsTo(User, { foreignKey: 'assignedTo', as: 'agent' });
 
+// New RBAC Associations (Interakt-style)
+// User <-> Role (many-to-many)
+User.belongsToMany(Role, {
+    through: UserRole,
+    foreignKey: 'userId',
+    otherKey: 'roleId',
+    as: 'roles'
+});
+
+Role.belongsToMany(User, {
+    through: UserRole,
+    foreignKey: 'roleId',
+    otherKey: 'userId',
+    as: 'users'
+});
+
+// Role <-> Permission (many-to-many)
+Role.belongsToMany(Permission, {
+    through: RolePermission,
+    foreignKey: 'roleId',
+    otherKey: 'permissionId',
+    as: 'permissions'
+});
+
+// User <-> Team (many-to-many)
+User.belongsToMany(Team, {
+    through: TeamMember,
+    foreignKey: 'userId',
+    otherKey: 'teamId',
+    as: 'teams'
+});
+
+Team.belongsToMany(User, {
+    through: TeamMember,
+    foreignKey: 'teamId',
+    otherKey: 'userId',
+    as: 'members'
+});
+
+// Events Tracking Associations
+Event.belongsTo(Person, { foreignKey: 'contactId', as: 'contact' });
+Person.hasMany(Event, { foreignKey: 'contactId', as: 'events' });
+
+EventDefinition.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+// Tag Associations (using 'tagRecords' to avoid collision with Person.tags JSON field)
+Person.belongsToMany(Tag, {
+    through: ContactTag,
+    foreignKey: 'contactId',
+    otherKey: 'tagId',
+    as: 'tagRecords'
+});
+
+Tag.belongsToMany(Person, {
+    through: ContactTag,
+    foreignKey: 'tagId',
+    otherKey: 'contactId',
+    as: 'contacts'
+});
+
+// Contact Field Associations (using 'fieldValues' to avoid collision with Person.customFields)
+ContactField.hasMany(ContactFieldValue, { foreignKey: 'fieldId', as: 'values' });
+ContactFieldValue.belongsTo(ContactField, { foreignKey: 'fieldId', as: 'field' });
+ContactFieldValue.belongsTo(Person, { foreignKey: 'contactId', as: 'contact' });
+Person.hasMany(ContactFieldValue, { foreignKey: 'contactId', as: 'fieldValues' });
+
+// QuickReply and InboxSetting Associations
+QuickReply.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+InboxSetting.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+// Advanced Workflow Associations
+Workflow.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+Workflow.hasMany(WorkflowNode, { foreignKey: 'workflowId', as: 'nodes' });
+Workflow.hasMany(WorkflowEdge, { foreignKey: 'workflowId', as: 'edges' });
+Workflow.hasMany(WorkflowExecution, { foreignKey: 'workflowId', as: 'executions' });
+
+WorkflowNode.belongsTo(Workflow, { foreignKey: 'workflowId', as: 'workflow' });
+WorkflowEdge.belongsTo(Workflow, { foreignKey: 'workflowId', as: 'workflow' });
+
+WorkflowExecution.belongsTo(Workflow, { foreignKey: 'workflowId', as: 'workflow' });
+WorkflowExecution.belongsTo(Person, { foreignKey: 'contactId', as: 'contact' });
+WorkflowExecution.hasMany(WorkflowExecutionLog, { foreignKey: 'executionId', as: 'logs' });
+
+WorkflowExecutionLog.belongsTo(WorkflowExecution, { foreignKey: 'executionId', as: 'execution' });
+WorkflowExecutionLog.belongsTo(WorkflowNode, { foreignKey: 'nodeId', as: 'node' });
+
 module.exports = {
     sequelize,
+    // Core Models
     User,
     Template,
     Contact,
@@ -172,7 +287,7 @@ module.exports = {
     AuditLog,
     ErrorLog,
     Autoresponder,
-    // RBAC exports
+    // Original RBAC exports
     Permission,
     Group,
     GroupPermission,
@@ -185,5 +300,28 @@ module.exports = {
     StepExecution,
     // Webhook exports
     WebhookEvent,
+    // New RBAC exports (Interakt-style)
+    Role,
+    RolePermission,
+    UserRole,
+    Team,
+    TeamMember,
+    // Events Tracking exports
+    Event,
+    EventDefinition,
+    // Enhanced Contact exports
+    Tag,
+    ContactTag,
+    ContactField,
+    ContactFieldValue,
+    // Automation exports
+    QuickReply,
+    InboxSetting,
+    // Advanced Workflow exports
+    Workflow,
+    WorkflowNode,
+    WorkflowEdge,
+    WorkflowExecution,
+    WorkflowExecutionLog,
 };
 
